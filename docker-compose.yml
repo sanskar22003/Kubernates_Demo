@@ -1,0 +1,10 @@
+version: "3.8" 
+services: 
+  web: 
+    build: . 
+    image: composedemo/flask-lab:compose-v1 
+    ports:
+      - "5000:5000" 
+    volumes:
+      - ./app:/app:ro        
+    restart: unless-stopped

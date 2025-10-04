@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enhanced-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: enhanced-app
+  template:
+    metadata:
+      labels:
+        app: enhanced-app
+    spec:
+      containers:
+      - name: enhanced-container
+        image: enhanced-app:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "500m"
