@@ -1,0 +1,322 @@
+# ================================================================================ Deployment
+
+- Definition of Deployment: Deployment is the process of releasing and installing software or updates into environments like production, staging, or testing. It automates steps to make code live, ensuring reliability, minimal downtime, and easy rollbacks.
+
+- Characteristics of Deployment Tools:
+
+  - Automation: Automates build, test, deploy tasks.
+  - Integration: Works with CI/CD pipelines.
+  - Scalability: Supports multiple environments/servers.
+  - Version Control: Tracks changes, supports rollbacks.
+  - Security: Manages credentials, ensures compliance.
+  - Example: Automatically deploys code from Git to AWS, running tests.
+
+- Benefits of Deployment Tools:
+
+  - Faster Releases: Reduces errors, speeds up delivery.
+  - Consistency: Uniform deployments across environments.
+  - Collaboration: Standardizes team processes.
+  - Cost Savings: Minimizes downtime/resource waste.
+  - Rollback Ease: Quick recovery from failures.
+  - Example: Cuts web app release time from days to hours, enabling frequent updates.
+
+- Deployment Tools: GitHub Actions:
+
+  - CI/CD platform integrated with GitHub, using YAML workflows.
+  - Key Features: Triggers (push/pull), jobs (steps), runners (e.g., Ubuntu), marketplace actions.
+  - Workflow: Define in .github/workflows/, e.g., build, test, deploy to cloud.
+  - Example Workflow: name: Deploy App on: \[push\] jobs: build: runs-on: ubuntu-latest steps: - uses: actions/checkout@v2 - name: Deploy run: echo "Deploying to production"
+
+# ================================================================================ Operate Using Ansible
+
+- Introduction to Ansible: Open-source automation tool for configuration management, deployment, and orchestration. Agentless (uses SSH), idempotent, Python-based, simple syntax.
+
+- Workflow:
+
+  - Inventory: Lists target hosts (e.g., inventory.ini).
+  - Playbooks: YAML files with tasks.
+  - Execution: Run ansible-playbook to apply configs.
+  - Example: Inventory lists servers; playbook installs Apache.
+
+- Architecture:
+
+  - Control Node: Runs Ansible commands (needs Python, SSH).
+  - Managed Nodes: Target machines (no agent; needs Python, SSH).
+  - Modules: Reusable task code.
+  - Plugins: Extend functionality (e.g., connection plugins).
+  - Push-based, no central server.
+
+- Various Commands:
+
+  - ansible: Ad-hoc, e.g., ansible all -m ping.
+  - ansible-playbook: Runs playbooks, e.g., ansible-playbook site.yml.
+  - ansible-vault: Encrypts data, e.g., ansible-vault create secrets.yml.
+  - ansible-galaxy: Manages roles, e.g., ansible-galaxy install geerlingguy.apache.
+  - ansible-pull: Pulls configs from repo.
+
+- Playbook: YAML file with plays (hosts, tasks, handlers).
+
+  - Example:
+    - name: Install Nginx hosts: webservers tasks:
+      - name: Install package apt: name: nginx state: present
+
+- Roles: Reusable directory structures (tasks, vars, handlers). Installed via ansible-galaxy.
+
+  - Example: Role "webserver" with tasks/main.yml for Apache setup.
+
+- Modules: Built-in task code (e.g., apt, copy).
+
+  - Example: file: path=/opt/app state=directory.
+
+- Shell: Runs shell commands on remote hosts.
+
+  - Example: shell: echo "Hello" &gt; /tmp/file.txt.
+
+- YAML: Human-readable, key-value format with spaces (no tabs).
+
+  - Example: key: value.
+
+- File Management: Modules like copy, template, synchronize.
+
+  - Example: copy: src=/local/file dest=/remote/file.
+
+- Ansible vs Chef vs Puppet:
+
+  - Ansible: Agentless, push-based, YAML. Pros: Easy setup; Cons: Slower for large-scale.
+  - Chef: Agent-based, pull-based, Ruby DSL. Pros: Complex configs; Cons: Steep learning curve.
+  - Puppet: Agent-based, pull-based, Puppet DSL. Pros: Mature; Cons: Needs master server.
+  - Example: Use Ansible for quick tasks; Chef/Puppet for enterprise configs.
+
+# ================================================================================ Operate Using Puppet
+
+- Architecture: Client-server model. Puppet Master compiles catalogs; Agents pull/apply them. Uses SSL.
+
+- Components:
+
+  - Puppet Master: Central config server.
+  - Puppet Agent: On nodes, pulls manifests.
+  - Facter: Collects system facts (e.g., OS).
+  - Catalog: Compiled node config.
+  - Hiera: Separates data (key-value).
+
+- Applications: Config management, infrastructure as code, orchestration (e.g., app deployment).
+
+- Installation:
+
+  - Master: Install puppet-master, configure /etc/puppetlabs/puppet/puppet.conf.
+  - Agent: Install puppet-agent, set server=master.example.com, run puppet agent --test.
+  - Example: yum install puppet-agent (CentOS).
+
+- Coding Style: Declarative (desired state), indented, modular, commented.
+
+- Modules: Reusable manifests, files, templates. Install via puppet module install.
+
+  - Example: apache module for web server setup.
+
+- File Server: Serves files from Master to agents.
+
+  - Example: file { '/etc/motd': source =&gt; 'puppet:///modules/common/motd' }
+
+- Classes: Group resources in manifests.
+
+  - Example: class webserver { package { 'httpd': ensure =&gt; installed } }
+
+- Function: Built-in/custom logic (e.g., inline_template).
+
+  - Example: notice("Hello ${::hostname}")
+
+- Type & Provider: Types (e.g., package); Providers (e.g., apt, yum).
+
+  - Example: Custom type for "database".
+
+- Template Custom Function: ERB templates for dynamic files; custom functions extend Puppet.
+
+  - Example: &lt;%= @hostname %&gt; in template.erb; rendered via template('module/file.erb').
+
+# ================================================================================ Orchestration Tools
+
+- Orchestration Tools: Automate management, scaling, deployment of containerized apps. Examples: Docker (containerization), Kubernetes (orchestration).
+
+## Docker
+
+- Introduction: Open-source platform for building, shipping, running apps in containers. Containers are lightweight, portable, isolated.
+
+- Architecture:
+
+  - Docker Daemon: Manages containers.
+  - Docker Client: CLI for daemon interaction.
+  - Images: Read-only templates.
+  - Containers: Running image instances.
+  - Registry: Stores images (e.g., Docker Hub).
+
+- Containerization: Packages apps with dependencies for consistency.
+
+  - Example: Node.js app runs identically on dev/prod.
+
+- Lifecycle: Build (docker build), Run (docker run), Stop (docker stop), Remove (docker rm).
+
+  - Example: docker build -t myapp . (from Dockerfile).
+
+- CLI: Commands for Docker ops.
+
+  - Examples: docker ps (list containers), docker images, docker pull ubuntu.
+
+- Port Binding: Maps container ports to host.
+
+  - Example: docker run -p 8080:80 nginx.
+
+- Detached and Foreground Mode: Detached (-d) runs in background; foreground attaches console.
+
+  - Example: docker run -d nginx.
+
+- File System: Union file system with layers (read-only + writable).
+
+  - Example: Container changes in top writable layer.
+
+- Registry: Stores images (public: Docker Hub; private: self-hosted).
+
+  - Example: docker push myimage:latest.
+
+- Storage: Persistent data via bind mounts or volumes.
+
+  - Bind Mounts: Link host dir to container.
+  - Volumes: Docker-managed, efficient.
+
+- Volume: Managed storage for persistence.
+
+  - Example: docker volume create myvol; docker run -v myvol:/data busybox.
+
+- Compose: Multi-container apps via docker-compose.yml.
+
+  - Example: services: web: image: nginx; db: image: mysql.
+
+- Swarm: Docker’s clustering/orchestration.
+
+  - Example: docker swarm init; docker service create.
+
+## Kubernetes
+
+- Core Concepts: Orchestrates containers. Cluster (master + nodes), API Server, etcd (storage), Scheduler, Controller Manager.
+
+- Pods: Smallest unit; one/more containers sharing network/storage. Ephemeral.
+
+  - Example: Pod YAML: apiVersion: v1, kind: Pod, spec: containers: - name: nginx image: nginx.
+
+- ReplicaSet and Replication Controller: Ensure replica count. ReplicaSet is newer.
+
+  - Example: ReplicaSet YAML: replicas: 3, selector: matchLabels: app: myapp.
+
+- Deployments: Manage ReplicaSets for updates/rollbacks.
+
+  - Example: Deployment YAML: kind: Deployment, spec: replicas: 3.
+
+- DaemonSets: One pod per node (e.g., monitoring).
+
+  - Example: Logging agent on every node.
+
+- Rolling Updates and Rollbacks: Gradual pod updates; rollback to prior version.
+
+  - Example: kubectl rollout undo deployment/myapp.
+
+- Scaling Application: Adjust replicas manually or via HPA.
+
+  - Example: kubectl scale deployment/myapp --replicas=5.
+
+- Services: Expose pods (ClusterIP, NodePort, LoadBalancer).
+
+  - Example: Service YAML: type: LoadBalancer, ports: - port: 80.
+
+- Persistent Volumes (PV) vs Primitives: PVs for cluster storage; Primitives are basic K8s objects. PVC requests PV.
+
+  - Example: PV YAML for hostPath; PVC binds to it.
+
+- Secrets and ConfigMaps: Secrets (sensitive, base64); ConfigMaps (non-sensitive).
+
+  - Example: kubectl create secret generic mysecret --from-literal=password=123.
+
+- Headless Services: No load balancing, direct pod access via DNS.
+
+  - Example: For databases; spec: clusterIP: None.
+
+- StatefulSets: Stateful apps with stable identities.
+
+  - Example: Pods named db-0, db-1 for MongoDB.
+
+- Ingress: HTTP/HTTPS routing to services.
+
+  - Example: Ingress YAML routes /path to service; needs Ingress Controller.
+
+# ================================================================================ Monitoring
+
+- Monitoring: Tracks system health, performance, alerts. Collects metrics, logs, visualizes data.
+
+## Nagios
+
+- Introduction: Open-source tool for monitoring IT infrastructure (servers, networks, apps). Checks hosts/services, alerts on issues.
+
+- Features:
+
+  - Host/Service Monitoring: Checks availability (e.g., ping, HTTP).
+  - Alerting: Email/SMS notifications.
+  - Reporting: Historical data/graphs.
+  - Extensibility: Plugins for custom checks.
+  - Event Handlers: Auto-responses.
+
+- Architecture:
+
+  - Scheduler: Runs checks.
+  - GUI: Web interface (Nagios XI/Core).
+  - Plugins: Scripts for checks (e.g., check_http).
+
+- Installation of Nagios Core:
+
+  - Linux: Install Apache, PHP, compile Nagios tarball (./configure, make, make install).
+  - Configure: Edit /usr/local/nagios/etc/nagios.cfg, add hosts in objects/hosts.cfg.
+  - Start: /usr/local/nagios/bin/nagios -v; systemctl start nagios.
+
+- Advantages and Disadvantages:
+
+  - Advantages: Free, flexible, large community.
+  - Disadvantages: Steep learning curve, no built-in graphing, resource-heavy.
+  - Example: Monitors server uptime in small teams.
+
+## Prometheus and Grafana
+
+- Introduction:
+
+  - Prometheus: Metrics-based monitoring, pulls metrics, stores time-series, uses PromQL.
+  - Grafana: Visualization tool, creates dashboards from Prometheus data.
+
+- Grafana Setup: Install (e.g., apt install grafana), start service, access http://localhost:3000, add Prometheus data source.
+
+- Monitoring Using Prometheus:
+
+  - Scrapes metrics from exporters (e.g., Node Exporter).
+  - Alertmanager for alerts.
+  - Example: prometheus.yml: scrape_configs: - job_name: node static_configs: - targets: \['localhost:9100'\].
+
+- Dashboard Visualization Using Grafana: Create panels (graphs, tables) with queries.
+
+  - Example: CPU usage panel: SELECT rate(cpu_usage\[5m\]) FROM metrics.
+
+- Creating a Dashboard to Monitor the Pipeline:
+
+  - Panels for build time, deployment success, errors.
+  - Example: Query rate(build_success\[1h\]) for CI/CD metrics.
+
+## Mongo and Mongo Express Deployments
+
+- Deployments: MongoDB (database) and Mongo Express (web UI) as K8s deployments.
+
+  - Example Mongo YAML: replicas: 1, containers: image: mongo, env: from secrets.
+  - Mongo Express: image: mongo-express, depends on Mongo service.
+
+- Services: Mongo (ClusterIP, port 27017), Mongo Express (NodePort/LoadBalancer, port 8081).
+
+  - Example: Service YAML: type: ClusterIP, ports: - port: 27017.
+
+- ConfigMaps and Secrets:
+
+  - ConfigMap: Non-sensitive (e.g., DB URL).
+  - Secret: Credentials (e.g., Mongo username/password).
+  - Example: kubectl create secret generic mongo-secret --from-literal=username=admin --from-literal=password=pass.

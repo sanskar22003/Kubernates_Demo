@@ -1,0 +1,190 @@
+# ================================================================================ Deployment: Theory and Definitions
+
+- Deployment Defined: The systematic process of transitioning software from development to operational environments, encompassing code integration, configuration, and activation. Theoretically, it adheres to principles of automation, repeatability, and minimal intervention to achieve zero-downtime releases.
+
+- Key Terminologies in Deployment:
+
+  - Continuous Deployment (CD): Automated release of every validated change to production without manual approval.
+  - Blue-Green Deployment: Maintaining two identical environments (blue: live, green: staging) for seamless switches and rollbacks.
+  - Canary Release: Gradual rollout to a subset of users to monitor impacts before full deployment.
+  - Idempotency: Property ensuring repeated operations yield the same result, crucial for reliable deployments.
+
+- Characteristics of Deployment Tools (Theoretical):
+
+  - Orchestration: Coordination of multi-step processes involving build, test, and deploy phases.
+  - Integration with CI/CD: Seamless linkage to Continuous Integration for automated pipelines.
+  - Environment Parity: Ensuring dev, test, prod environments mirror each other to reduce "it works on my machine" issues.
+  - Rollback Mechanisms: Theoretical fallback to previous states via versioned artifacts.
+
+- Benefits (Exam Focus):
+
+  - Reduces Mean Time to Recovery (MTTR) by enabling quick reversions.
+  - Enhances DevOps Culture: Fosters collaboration through shared responsibility (Dev and Ops).
+  - Scalability Theory: Supports horizontal scaling by automating resource provisioning.
+
+- GitHub Actions as a Deployment Tool:
+
+  - Definition: A workflow automation platform embedded in GitHub for CI/CD, defined declaratively in YAML.
+  - Theoretical Workflow: Event-driven (triggers like push), job orchestration (parallel/serial execution), and artifact management.
+  - Terminologies: Actions (reusable units), Runners (execution environments), Secrets (encrypted variables for security).
+
+# ================================================================================ Ansible: Technical Theory and Architecture
+
+- Introduction and Theory: Ansible operates on a declarative paradigm, specifying desired states rather than procedural steps. It's based on push architecture, emphasizing simplicity and agentless design for infrastructure as code (IaC).
+
+- Workflow Theory:
+
+  - Inventory Management: Static or dynamic grouping of nodes for targeted operations.
+  - Task Execution: Sequential or parallel application of modules, with handlers for conditional restarts.
+
+- Architecture Definitions:
+
+  - Control Node: Central hub for playbook execution, requiring only Ansible installation.
+  - Managed Nodes: Remote systems accessed via SSH/WinRM, no daemons needed.
+  - Connection Plugins: Abstractions for transport (e.g., SSH, local).
+  - Inventory Plugins: Extendable for cloud/dynamic inventories (e.g., AWS EC2).
+
+- Commands and Terminologies:
+
+  - Ad-Hoc Commands: One-off executions using ansible command for immediate tasks.
+  - Playbooks: Structured YAML documents defining plays, which map hosts to tasks.
+  - Vault: Encryption mechanism for sensitive data using AES256.
+  - Galaxy: Repository for community roles, promoting modularity.
+
+- Playbook Theory: Comprises plays (host-task mappings), tasks (module invocations), and variables (for parameterization). Supports loops, conditionals, and delegation.
+
+- Roles: Encapsulated, reusable units following Ansible Best Practices directory structure (tasks, meta, defaults, etc.), enabling abstraction and reuse.
+
+- Modules: Core building blocks; procedural code executed on managed nodes, returning JSON for idempotency checks.
+
+  - Shell Module: Executes arbitrary commands, bypassing module framework for flexibility but reducing idempotency.
+
+- YAML Fundamentals: Yet Another Markup Language; key-value serialization with strict indentation, used for readability in configurations.
+
+- File Management Theory: Involves state management (present/absent) and content synchronization, using checksums for efficiency.
+
+- Comparison: Ansible (declarative, agentless) vs. Chef (procedural/declarative hybrid, agent-based with Ohai for facts) vs. Puppet (declarative, agent-based with Facter).
+
+# ================================================================================ Puppet: Theoretical Framework and Components
+
+- Architecture Theory: Master-agent model with pull-based synchronization; declarative language ensures eventual consistency.
+
+- Key Components Defined:
+
+  - Puppet Master/Server: Compiles manifests into catalogs using node facts.
+  - Agent: Daemon on nodes that fetches and applies catalogs periodically (default 30 mins).
+  - Facter: Fact-gathering tool providing variables like $facts\['os'\]\['family'\].
+  - Catalog: Node-specific compiled instructions.
+  - Hiera: Hierarchical data backend for separating code from data.
+
+- Applications in Theory: Enforces desired state convergence, supports idempotent operations for config drift correction.
+
+- Installation Theory: Involves package managers, configuration files (puppet.conf), and certificate signing for secure communication.
+
+- Coding Style Principles: Declarative DSL (Domain-Specific Language), resource-oriented, with ordering via notify/subscribe.
+
+- Modules: Standardized packages with manifests, files, templates; follow Forge standards for community sharing.
+
+- File Server: Puppet's fileserving protocol (puppet://) for distributing static content.
+
+- Classes: Parameterized groupings of resources, inheritable for hierarchy.
+
+- Functions: Procedural extensions (e.g., stdlib functions) for complex logic within declarative code.
+
+- Types and Providers: Types abstract resources (e.g., user, file); Providers implement platform-specific logic (e.g., useradd for user type).
+
+- Templates and Custom Functions: ERB/Jinja for variable interpolation; custom Ruby functions for extended capabilities.
+
+# ================================================================================ Orchestration Tools: Conceptual Foundations
+
+- Orchestration Defined: Coordination of automated tasks across distributed systems, often for container management.
+
+## Docker: Theory and Core Concepts
+
+- Introduction: Platform-as-a-Service for containerization, isolating processes via namespaces and cgroups.
+
+- Architecture: Client-server with daemon (dockerd), REST API, and storage drivers (e.g., overlay2).
+
+- Containerization Theory: OS-level virtualization sharing host kernel, contrasting VMs (hypervisor-based).
+
+- Lifecycle Phases: Image build (layered filesystem), container creation/start, runtime management, destruction.
+
+- CLI Fundamentals: Imperative commands for image/container operations.
+
+- Port Binding: Network namespace mapping for external access.
+
+- Modes: Detached (background daemon) vs. Interactive (foreground with stdin).
+
+- File System: Copy-on-Write layers for efficiency and immutability.
+
+- Registry: Centralized image repository with authentication and versioning.
+
+- Storage Theory: Ephemeral vs. Persistent; volumes decouple data from container lifecycle.
+
+- Volumes: Named, mountable filesystems managed by Docker.
+
+- Compose: Declarative multi-container orchestration via YAML, defining services, networks, volumes.
+
+- Swarm: Native clustering for high availability, using Raft consensus.
+
+## Kubernetes: Theoretical Core
+
+- Core Concepts: Abstraction over container runtimes (e.g., containerd), with control plane components for scheduling and healing.
+
+- Pods: Atomic scheduling units, co-located containers with shared IPC/network.
+
+- ReplicaSet/ReplicationController: Declarative replica management; RS supports set-based selectors.
+
+- Deployments: Higher-level abstraction for versioned rollouts.
+
+- DaemonSets: Node-affine pods for per-node tasks.
+
+- Updates/Rollbacks: Strategies like RollingUpdate (maxSurge, maxUnavailable).
+
+- Scaling: Manual (replicas) or Auto (HPA based on metrics).
+
+- Services: Stable endpoints with selectors; types define exposure.
+
+- Persistent Volumes: Abstract storage claims (PVC) bound to provisions (PV).
+
+- Secrets/ConfigMaps: Decoupled configuration injection via volumes/env.
+
+- Headless Services: DNS-based discovery without proxy.
+
+- StatefulSets: Ordered, persistent pod management with stable network IDs.
+
+- Ingress: L7 routing rules, dependent on controllers.
+
+# ================================================================================ Monitoring: Principles and Architectures
+
+## Nagios: Monitoring Theory
+
+- Introduction: Event-driven monitoring with active/passive checks for infrastructure health.
+
+- Features: Threshold-based alerting, dependency mapping, performance data.
+
+- Architecture: Central scheduler, plugin execution, NRPE for remote checks.
+
+- Installation: Core setup involves compilation, object configurations (hosts, services).
+
+- Pros/Cons: Flexible but configuration-heavy; lacks native scaling.
+
+## Prometheus and Grafana: Time-Series Monitoring
+
+- Introduction: Prometheus (pull-based metrics scraper); Grafana (query visualization).
+
+- Setup Theory: Grafana datasources connect to Prometheus TSDB.
+
+- Monitoring: Exporters provide /metrics endpoints; PromQL for querying.
+
+- Visualization: Panels, dashboards with variables for interactivity.
+
+- Pipeline Dashboard: Metrics like success_rate, duration for CI/CD observability.
+
+## Mongo and Mongo Express in K8s: Theoretical Deployment
+
+- Deployments: Replica-managed pods for stateless/stateful apps.
+
+- Services: Abstraction for pod discovery and load balancing.
+
+- ConfigMaps/Secrets: Externalized configuration for twelve-factor apps.

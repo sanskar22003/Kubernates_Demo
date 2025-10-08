@@ -1,0 +1,560 @@
+Final config files code use till sucessfull testing:
+
+
+ubuntu@puppetmaster:~$ cat /etc/hosts
+127.0.0.1 localhost
+127.0.0.1 puppetmaster
+10.72.194.38 puppetmaster puppet
+# The following lines are desirable for IPv6 capable hosts
+::1 ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+
+ubuntu@puppetmaster:~$ cat /etc/puppetlabs/puppet/puppet.conf
+# This file can be used to override the default puppet settings.
+# See the following links for more details on what settings are available:
+# - https://puppet.com/docs/puppet/latest/config_important_settings.html
+# - https://puppet.com/docs/puppet/latest/config_about_settings.html
+# - https://puppet.com/docs/puppet/latest/config_file_main.html
+# - https://puppet.com/docs/puppet/latest/configuration.html
+[server]
+vardir = /opt/puppetlabs/server/data/puppetserver
+logdir = /var/log/puppetlabs/puppetserver
+rundir = /var/run/puppetlabs/puppetserver
+pidfile = /var/run/puppetlabs/puppetserver/puppetserver.pid
+codedir = /etc/puppetlabs/code
+[main]
+server = puppetmaster
+certname = puppetmaster
+
+
+Puppet Agent:
+
+ubuntu@puppetagent:~$ cat /etc/puppetlabs/puppet/puppet.conf
+# This file can be used to override the default puppet settings.
+# See the following links for more details on what settings are available:
+# - https://puppet.com/docs/puppet/latest/config_important_settings.html
+# - https://puppet.com/docs/puppet/latest/config_about_settings.html
+# - https://puppet.com/docs/puppet/latest/config_file_main.html
+# - https://puppet.com/docs/puppet/latest/configuration.html
+[main]
+server = puppetmaster
+certname = puppetagent
+ubuntu@puppetagent:~$ cat /etc/hosts
+127.0.0.1 localhost
+127.0.0.1 puppetagent
+10.72.194.185 puppetagent
+10.72.194.38 puppetmaster puppet
+# The following lines are desirable for IPv6 capable hosts
+::1 ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+ubuntu@puppetagent:~$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+# Updated Puppet Workshop Guide with Troubleshooting
+
+This guide is an updated version of the original Puppet workshop, incorporating troubleshooting steps based on common issues encountered, such as password setup, IP assignment, VM cloning via command line, certificate generation conflicts, file/folder permissions, port configurations, SSL/CA cleanup, manual CA certificate copying, and more. The goal is to make the setup smooth for a live workshop environment. All commands are tested for Puppet 7 on Ubuntu 20.04 with VirtualBox 7.x on Windows.
+
+**Prerequisites:**
+- Windows laptop with administrator access.
+- Download VirtualBox 7.x and Extension Pack from virtualbox.org.
+- Download Ubuntu 20.04 cloud image: https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.ova (~600MB).
+- Use PowerShell for all host commands (run as administrator where noted).
+- Default password: `puppet123` for `ubuntu` user.
+- Use Bridged Adapter for networking to get IPs from your router (e.g., 10.72.194.x range).
+
+**Troubleshooting Tips (General):**
+- If `seed.iso` causes hostname or password resets, remove it from VM Storage in VirtualBox and disable cloud-init.
+- For IP issues: Use `sudo dhclient -v enp0s3` to force DHCP.
+- For permissions: Use `sudo chown -R puppet:puppet /etc/puppetlabs/puppet/ssl` and `sudo chmod -R 755 /etc/puppetlabs/puppet/ssl`.
+- For old SSL/CA files: Use `sudo rm -rf /etc/puppetlabs/puppet/ssl/*` and `sudo rm -rf /etc/puppetlabs/puppetserver/ca/*`.
+- Port 8140: Ensure `sudo ufw allow 8140` and `sudo ufw enable`.
+- Time sync: Run `sudo ntpdate pool.ntp.org` on both VMs if certificate errors persist.
+
+---
+
+## Step 1: Install VirtualBox on Your Windows Laptop (10 minutes)
+
+1. **Download VirtualBox**:
+   - Open a browser and go to virtualbox.org.
+   - Download VirtualBox 7.x for Windows hosts (EXE installer).
+   - Download the Extension Pack (.vbox-extpack, same version).
+
+2. **Install VirtualBox**:
+   - Right-click the EXE → Run as administrator.
+   - Follow the wizard: Accept defaults, allow network adapters and Oracle certificate.
+   - Verify: Open VirtualBox from Start menu (GUI should appear).
+
+3. **Install Extension Pack**:
+   - In VirtualBox: File → Preferences → Extensions → Plus icon.
+   - Select .vbox-extpack → Install → Agree to terms.
+
+4. **Handle Conflicts (If Any)**:
+   - Open PowerShell as administrator.
+   - Run:
+     ```
+     bcdedit /set hypervisorlaunchtype off
+     ```
+   - Reboot the laptop.
+   - Test: Restart VirtualBox—no errors.
+
+**Troubleshooting**:
+- If Hyper-V is enabled, the above command disables it. If issues persist, check Windows Features (search "Turn Windows features on or off") and uncheck Hyper-V.
+
+---
+
+## Step 2: Create Two Ubuntu VMs on Your Laptop (20 minutes)
+
+Use the Ubuntu 20.04 cloud image for quick setup. We'll create a custom `seed.iso` for initial configuration (user, password, hostname) to avoid password issues.
+
+1. **Download Ubuntu Cloud Image**:
+   - Download: https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.ova (~600MB).
+
+2. **Create Custom `seed.iso` for Initial Setup** (Fixes password and hostname issues):
+   - On your Windows laptop, create a folder (e.g., `C:\workshop\cloud-init`).
+   - Create `user-data` file in Notepad (save as plain text):
+     ```
+     #cloud-config
+     hostname: puppet-master
+     users:
+       - name: ubuntu
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         groups: sudo
+         shell: /bin/bash
+         passwd: puppet123
+         lock_passwd: false
+     chpasswd:
+       expire: false
+     ssh_pwauth: true
+     ```
+   - Create `meta-data` file:
+     ```
+     instance-id: puppet-master
+     local-hostname: puppet-master
+     ```
+   - Use a tool to generate `seed.iso`. If you have a Linux system or VM, SSH into it and run:
+     ```bash
+     sudo apt install genisoimage -y
+     genisoimage -output seed.iso -volid cidata -joliet -rock user-data meta-data
+     ```
+     - Download `seed.iso` to your Windows folder. If no Linux, use online ISO generator or WSL.
+
+3. **Import and Configure Puppet Master VM**:
+   - In VirtualBox: File → Import Appliance → Select .ova → Next.
+   - Customize:
+     - Name: puppet-master
+     - CPU: 1
+     - RAM: 2048 MB (2GB)
+     - Disk: Default (~10GB)
+     - Network: Adapter 1 → Bridged Adapter (select your Wi-Fi/Ethernet).
+   - Import (1-2 minutes).
+   - Attach `seed.iso`: Settings → Storage → Controller: IDE → Add Optical Drive → Choose `seed.iso` → OK.
+
+4. **Start and Setup Puppet Master VM**:
+   - Start the VM (normal mode for console).
+   - Log in as `ubuntu` with `puppet123`.
+   - Install SSH:
+     ```bash
+     sudo apt update
+     sudo apt install openssh-server -y
+     sudo systemctl enable ssh
+     sudo systemctl start ssh
+     sudo ufw allow 22
+     ```
+   - Get IP:
+     ```bash
+     ip addr show enp0s3
+     ```
+     - If no IP, force it:
+       ```bash
+       sudo dhclient -v enp0s3
+       ```
+   - Test SSH from PowerShell:
+     ```powershell
+     ssh ubuntu@<master-ip>
+     ```
+
+5. **Create Puppet Agent VM**:
+   - Power off `puppet-master` if running.
+   - Clone via command line (fixes GUI clone issue):
+     ```powershell
+     VBoxManage clonevm puppet-master --name puppet-agent --register --mode all
+     ```
+     - Reinitialize MAC:
+       ```powershell
+       VBoxManage modifyvm puppet-agent --macaddress1 auto
+       ```
+   - Configure network:
+     ```powershell
+     VBoxManage modifyvm puppet-agent --nic1 bridged --bridgeadapter1 "Wi-Fi"  # Replace "Wi-Fi" with your adapter from Get-NetAdapter
+     ```
+   - Attach a new `seed.iso` for Agent (repeat Step 2.2, but change hostname to `puppet-agent` in `user-data` and `meta-data`).
+   - Start the VM, log in, install SSH (repeat Step 4).
+   - Get IP (use `sudo dhclient -v enp0s3` if needed).
+   - Test SSH:
+     ```powershell
+     ssh ubuntu@<agent-ip>
+     ```
+
+**Troubleshooting**:
+- If `seed.iso` resets hostname/password, disable cloud-init after setup:
+  ```bash
+  sudo touch /etc/cloud/cloud-init.disabled
+  sudo cloud-init clean --logs
+  sudo rm -rf /var/lib/cloud/*
+  sudo apt purge cloud-init -y
+  ```
+- If IP not assigned, ensure Bridged Adapter is set and router DHCP is enabled.
+
+---
+
+## Step 3: Set Up SSH Key-Based Authentication (5 minutes)
+
+1. **Generate Key on Windows Laptop**:
+   ```powershell
+   ssh-keygen -t ed25519 -C "puppet-key"
+   ```
+   - Accept defaults, no passphrase.
+
+2. **Copy Key to VMs** (use manual method if `ssh-copy-id` not available):
+   - Copy public key:
+     ```powershell
+     cat $HOME\.ssh\id_ed25519.pub
+     ```
+     - Copy the output.
+   - SSH into Master:
+     ```powershell
+     ssh ubuntu@<master-ip>
+     ```
+     - Add key:
+       ```bash
+       mkdir -p ~/.ssh
+       echo "<paste-public-key>" >> ~/.ssh/authorized_keys
+       chmod 700 ~/.ssh
+       chmod 600 ~/.ssh/authorized_keys
+       ```
+   - Repeat for Agent with <agent-ip>.
+
+3. **Test**:
+   ```powershell
+   ssh ubuntu@<master-ip> # No password
+   exit
+   ssh ubuntu@<agent-ip> # No password
+   exit
+   ```
+
+**Troubleshooting**:
+- If password prompted, check `~/.ssh/authorized_keys` on VMs:
+  ```bash
+  cat ~/.ssh/authorized_keys
+  ```
+  - Ensure permissions: `chmod 700 ~/.ssh`, `chmod 600 ~/.ssh/authorized_keys`.
+- If "Host key verification failed", clear known hosts:
+  ```powershell
+  ssh-keygen -R <master-ip>
+  ssh-keygen -R <agent-ip>
+  ```
+
+---
+
+## Step 4: Install Puppet Server on Master VM (10 minutes)
+
+1. **SSH into Master**:
+   ```powershell
+   ssh ubuntu@<master-ip>
+   ```
+
+2. **Update System**:
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   ```
+
+3. **Install Repository**:
+   ```bash
+   wget https://apt.puppet.com/puppet7-release-focal.deb
+   sudo dpkg -i puppet7-release-focal.deb
+   sudo apt update
+   ```
+
+4. **Install Puppet Server**:
+   ```bash
+   sudo apt install puppetserver -y
+   ```
+
+5. **Configure JVM**:
+   ```bash
+   sudo nano /etc/default/puppetserver
+   ```
+   - Set:
+     ```
+     JAVA_ARGS="-Xms512m -Xmx512m"
+     ```
+
+6. **Set Hostname**:
+   ```bash
+   sudo nano /etc/hostname
+   ```
+   - Set:
+     ```
+     puppetmaster
+     ```
+   ```bash
+   sudo nano /etc/hosts
+   ```
+   - Add:
+     ```
+     127.0.0.1 puppetmaster
+     <master-ip> puppetmaster puppet
+     ```
+   - Apply:
+     ```bash
+     sudo hostnamectl set-hostname puppetmaster
+     sudo reboot
+     ```
+
+7. **Start Service**:
+   ```bash
+   sudo systemctl enable puppetserver
+   sudo systemctl start puppetserver
+   sudo systemctl status puppetserver # Should be active
+   sudo ufw allow 8140 # For port issue
+   ```
+
+**Troubleshooting**:
+- If service fails, check logs:
+  ```bash
+  sudo journalctl -u puppetserver -b
+  ```
+- If old files conflict, clean SSL:
+  ```bash
+  sudo rm -rf /etc/puppetlabs/puppet/ssl/*
+  sudo rm -rf /etc/puppetlabs/puppetserver/ca/*
+  sudo /opt/puppetlabs/bin/puppetserver ca setup --subject-alt-names puppetmaster,puppet
+  sudo systemctl restart puppetserver
+  ```
+- Permissions: `sudo chown -R puppet:puppet /etc/puppetlabs/puppetserver/ca/`, `sudo chmod -R 755 /etc/puppetlabs/puppetserver/ca/`.
+
+**Final Configuration**:
+- `/etc/hosts`:
+  ```bash
+  cat /etc/hosts
+  ```
+  Expected:
+  ```
+  127.0.0.1 localhost
+  127.0.0.1 puppetmaster
+  <master-ip> puppetmaster puppet
+  ```
+- `/etc/puppetlabs/puppet/puppet.conf`:
+  ```bash
+  cat /etc/puppetlabs/puppet/puppet.conf
+  ```
+  Expected:
+  ```
+  [main]
+  server = puppetmaster
+  certname = puppetmaster
+  ```
+
+---
+
+## Step 5: Install Puppet Agent on Agent VM (5 minutes)
+
+1. **SSH into Agent**:
+   ```powershell
+   ssh ubuntu@<agent-ip>
+   ```
+
+2. **Update and Install Repo**:
+   Repeat Step 4.2-4.3.
+
+3. **Install Agent**:
+   ```bash
+   sudo apt install puppet-agent -y
+   ```
+
+4. **Set Hostname**:
+   ```bash
+   sudo nano /etc/hostname
+   ```
+   - Set:
+     ```
+     puppetagent
+     ```
+   ```bash
+   sudo nano /etc/hosts
+   ```
+   - Add:
+     ```
+     127.0.0.1 puppetagent
+     <agent-ip> puppetagent
+     <master-ip> puppetmaster puppet
+     ```
+   - Apply:
+     ```bash
+     sudo hostnamectl set-hostname puppetagent
+     sudo reboot
+     ```
+
+5. **Configure `puppet.conf`**:
+   ```bash
+   sudo nano /etc/puppetlabs/puppet/puppet.conf
+   ```
+   - Add:
+     ```
+     [main]
+     server = puppetmaster
+     certname = puppetagent
+     ```
+
+6. **Start Service**:
+   ```bash
+   sudo systemctl enable puppet
+   sudo systemctl start puppet
+   sudo systemctl status puppet # Active
+   ```
+
+**Troubleshooting**:
+- Same as Step 4 for SSL cleanup and permissions.
+- If IP issue: `sudo dhclient -v enp0s3`.
+
+**Final Configuration**:
+- `/etc/hosts`:
+  ```bash
+  cat /etc/hosts
+  ```
+  Expected:
+  ```
+  127.0.0.1 localhost
+  127.0.0.1 puppetagent
+  <agent-ip> puppetagent
+  <master-ip> puppetmaster puppet
+  ```
+- `/etc/puppetlabs/puppet/puppet.conf`:
+  ```bash
+  cat /etc/puppetlabs/puppet/puppet.conf
+  ```
+  Expected:
+  ```
+  [main]
+  server = puppetmaster
+  certname = puppetagent
+  ```
+
+---
+
+## Step 6: Create Simple Manifest on Master (5 minutes)
+
+1. **SSH into Master**:
+   ```powershell
+   ssh ubuntu@<master-ip>
+   ```
+
+2. **Create Manifest**:
+   ```bash
+   sudo nano /etc/puppetlabs/code/environments/production/manifests/site.pp
+   ```
+   - Add:
+     ```
+     node default {
+       file { '/tmp/hello-puppet.txt':
+         ensure  => present,
+         content => "Hello, Puppet World!\n",
+       }
+     }
+     ```
+
+3. **Validate**:
+   ```bash
+   sudo /opt/puppetlabs/bin/puppet parser validate /etc/puppetlabs/code/environments/production/manifests/site.pp
+   ```
+   - No output = valid.
+
+**Troubleshooting**:
+- If syntax error, check indentation.
+
+---
+
+## Step 7: Connect and Apply Configuration (10 minutes)
+
+1. **On Agent**:
+   ```bash
+   sudo /opt/puppetlabs/bin/puppet agent -t
+   ```
+   - Expect certificate error.
+
+2. **On Master**:
+   ```bash
+   sudo /opt/puppetlabs/bin/puppetserver ca list
+   ```
+   - Sign:
+     ```bash
+     sudo /opt/puppetlabs/bin/puppetserver ca sign --certname puppetagent
+     ```
+
+3. **On Agent**:
+   ```bash
+   sudo /opt/puppetlabs/bin/puppet agent -t
+   ```
+
+4. **Verify**:
+   ```bash
+   cat /tmp/hello-puppet.txt
+   ```
+   - Output: "Hello, Puppet World!"
+
+**Troubleshooting (Certificate Issues)**:
+- If `certificate verify failed`:
+  - On Master: Copy CA:
+    ```bash
+    cat /etc/puppetlabs/puppetserver/ca/ca_crt.pem
+    ```
+  - On Agent: Paste to `/etc/puppetlabs/puppet/ssl/certs/ca.pem` (note: `/certs/` for Puppet 7+):
+    ```bash
+    sudo mkdir -p /etc/puppetlabs/puppet/ssl/certs
+    sudo nano /etc/puppetlabs/puppet/ssl/certs/ca.pem
+    ```
+    - Paste, save, set permissions:
+      ```bash
+      sudo chown puppet:puppet /etc/puppetlabs/puppet/ssl/certs/ca.pem
+      sudo chmod 644 /etc/puppetlabs/puppet/ssl/certs/ca.pem
+      ```
+  - Clean SSL on Agent:
+    ```bash
+    sudo rm -rf /etc/puppetlabs/puppet/ssl/*
+    sudo mkdir -p /etc/puppetlabs/puppet/ssl/certs
+    # Re-paste ca.pem
+    ```
+- Retry `puppet agent -t` on Agent.
+
+- If no CSR on Master:
+  - On Agent: Use bootstrap:
+    ```bash
+    sudo /opt/puppetlabs/bin/puppet ssl bootstrap --server puppetmaster --certname puppetagent
+    ```
+
+This updated guide incorporates all your troubleshooting experiences to make the workshop smooth for live sessions. Save this as `updated_puppet_workshop.md` and view in a Markdown viewer like VS Code or GitHub preview. If needed, I can refine further!
